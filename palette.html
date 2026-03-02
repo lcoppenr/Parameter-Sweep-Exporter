@@ -16,6 +16,8 @@
         --danger:   #d44;
         --success:  #4a4;
         --radius:   6px;
+        --mode-bg:  #e8f4fb;
+        --mode-border: #0696d7;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -26,18 +28,9 @@
         font-size: 14px;
         line-height: 1.5;
     }
-    h1 {
-        font-size: 20px;
-        margin-bottom: 4px;
-        font-weight: 600;
-    }
-    .subtitle {
-        color: var(--fg-dim);
-        font-size: 13px;
-        margin-bottom: 18px;
-    }
+    h1 { font-size: 20px; margin-bottom: 4px; font-weight: 600; }
+    .subtitle { color: var(--fg-dim); font-size: 13px; margin-bottom: 18px; }
 
-    /* ---- Sections ---- */
     .section {
         background: var(--bg-card);
         border: 1px solid var(--border);
@@ -61,7 +54,43 @@
         border-radius: 10px;
     }
 
-    /* ---- Parameter Table ---- */
+    /* ---- Mode Toggle ---- */
+    .mode-toggle {
+        display: flex;
+        gap: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        margin-bottom: 14px;
+        width: fit-content;
+    }
+    .mode-btn {
+        padding: 7px 18px;
+        font-size: 13px;
+        font-weight: 600;
+        background: var(--bg-input);
+        color: var(--fg-dim);
+        border: none;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+        border-right: 1px solid var(--border);
+    }
+    .mode-btn:last-child { border-right: none; }
+    .mode-btn.active {
+        background: var(--accent);
+        color: #fff;
+    }
+    .mode-description {
+        font-size: 12px;
+        color: var(--fg-dim);
+        margin-bottom: 10px;
+        padding: 8px 10px;
+        background: var(--mode-bg);
+        border-left: 3px solid var(--mode-border);
+        border-radius: 0 4px 4px 0;
+    }
+
+    /* ---- Parameter Table (Range Mode) ---- */
     .param-table {
         width: 100%;
         border-collapse: collapse;
@@ -79,12 +108,9 @@
         border-bottom: 1px solid #e0e0e0;
         vertical-align: middle;
     }
-    .param-table tr:hover {
-        background: rgba(0,0,0,0.03);
-    }
+    .param-table tr:hover { background: rgba(0,0,0,0.03); }
     .param-table input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
+        width: 16px; height: 16px;
         accent-color: var(--accent);
     }
     .param-table input[type="number"],
@@ -98,8 +124,114 @@
         border-radius: 4px;
         font-size: 13px;
     }
-    .param-table input:disabled {
-        opacity: 0.35;
+    .param-table input:disabled { opacity: 0.35; }
+
+    /* ---- Explicit Mode ---- */
+    /* explicitSection visibility is controlled via inline style by setMode() */
+    .explicit-param-row {
+        display: grid;
+        grid-template-columns: 160px 1fr auto;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+    .explicit-param-label {
+        font-weight: 600;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .explicit-param-label .unit-tag {
+        font-size: 11px;
+        color: var(--fg-dim);
+        font-weight: normal;
+    }
+    .explicit-values-input {
+        width: 100%;
+        padding: 6px 8px;
+        background: var(--bg-input);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-size: 13px;
+        font-family: monospace;
+    }
+    .explicit-values-input.error { border-color: var(--danger); }
+    .explicit-count-badge {
+        font-size: 11px;
+        color: var(--fg-dim);
+        white-space: nowrap;
+        min-width: 50px;
+        text-align: right;
+    }
+    .explicit-count-badge.mismatch { color: var(--danger); font-weight: 600; }
+
+    /* CSV Import */
+    .csv-import-area {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+    }
+    .csv-import-area label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--fg-dim);
+        display: block;
+        margin-bottom: 6px;
+    }
+    .csv-import-area textarea {
+        width: 100%;
+        height: 80px;
+        padding: 8px;
+        background: var(--bg-input);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-size: 12px;
+        font-family: monospace;
+        resize: vertical;
+    }
+    .csv-hint {
+        font-size: 11px;
+        color: var(--fg-dim);
+        margin-top: 4px;
+    }
+    .csv-status {
+        font-size: 12px;
+        margin-top: 4px;
+        min-height: 18px;
+    }
+    .csv-status.ok  { color: var(--success); }
+    .csv-status.err { color: var(--danger); }
+
+    /* ---- Presets ---- */
+    .preset-bar {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+    .preset-bar select {
+        flex: 1;
+        min-width: 140px;
+        padding: 5px 8px;
+        background: var(--bg-input);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-size: 13px;
+    }
+    .preset-name-input {
+        flex: 1;
+        min-width: 120px;
+        padding: 5px 8px;
+        background: var(--bg-input);
+        color: var(--fg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-size: 13px;
     }
 
     /* ---- Body List ---- */
@@ -116,24 +248,16 @@
         border-radius: 4px;
         cursor: pointer;
     }
-    .body-item:hover {
-        background: rgba(0,0,0,0.04);
-    }
-    .body-item label {
-        cursor: pointer;
-        user-select: none;
-        font-size: 13px;
-    }
+    .body-item:hover { background: rgba(0,0,0,0.04); }
+    .body-item label { cursor: pointer; user-select: none; font-size: 13px; }
 
-    /* ---- Settings Row ---- */
+    /* ---- Settings ---- */
     .settings-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 12px;
     }
-    .settings-grid.three {
-        grid-template-columns: 1fr 1fr 1fr;
-    }
+    .settings-grid.three { grid-template-columns: 1fr 1fr 1fr; }
     .field label {
         display: block;
         font-size: 12px;
@@ -151,15 +275,9 @@
         font-size: 13px;
     }
     .field select { cursor: pointer; }
-    .field .browse-row {
-        display: flex;
-        gap: 6px;
-    }
+    .field .browse-row { display: flex; gap: 6px; }
     .field .browse-row input { flex: 1; }
-    .field .browse-row button {
-        padding: 6px 12px;
-        white-space: nowrap;
-    }
+    .field .browse-row button { padding: 6px 12px; white-space: nowrap; }
 
     /* ---- Buttons ---- */
     .actions {
@@ -177,20 +295,15 @@
         cursor: pointer;
         transition: background 0.15s;
     }
-    .btn-primary {
-        background: var(--accent);
-        color: #fff;
-    }
-    .btn-primary:hover { background: var(--accent-h); }
-    .btn-secondary {
-        background: #e0e0e0;
-        color: var(--fg);
-    }
+    .btn-primary   { background: var(--accent); color: #fff; }
+    .btn-primary:hover  { background: var(--accent-h); }
+    .btn-secondary { background: #e0e0e0; color: var(--fg); }
     .btn-secondary:hover { background: #d0d0d0; }
-    .btn-small {
-        font-size: 12px;
-        padding: 4px 10px;
-    }
+    .btn-danger    { background: #fde8e8; color: var(--danger); }
+    .btn-danger:hover { background: #f8d0d0; }
+    .btn-small { font-size: 12px; padding: 4px 10px; }
+    .btn-success { background: #e6f4e6; color: var(--success); border: 1px solid #bde0bd; }
+    .btn-success:hover { background: #d0ebd0; }
 
     /* ---- Preview ---- */
     .preview-box {
@@ -204,16 +317,13 @@
         max-height: 90px;
         overflow-y: auto;
     }
-    .preview-box strong {
-        color: var(--fg);
-    }
+    .preview-box strong { color: var(--fg); }
 
-    /* ---- Helpers ---- */
     .mt-8 { margin-top: 8px; }
+    .mt-12 { margin-top: 12px; }
     .text-dim { color: var(--fg-dim); }
     .text-small { font-size: 12px; }
 
-    /* Scrollbar styling */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: #bbb; border-radius: 4px; }
@@ -222,37 +332,97 @@
 <body>
 
 <h1>Parameter Sweep Exporter</h1>
-<p class="subtitle">Select parameters to sweep, choose bodies to export, and generate every combination.</p>
+<p class="subtitle">Sweep parameter ranges or define exact value sets — export every combination in one step.</p>
 
 <!-- ====== PARAMETERS ====== -->
 <div class="section">
     <h2>Parameters <span class="badge" id="paramCount">0</span></h2>
-    <p class="text-dim text-small mt-8" style="margin-bottom:8px;">
-        Only <strong>favorited (★)</strong> parameters are shown. To add a parameter here, right-click it in Fusion’s Parameters dialog and mark it as a favorite.
-    </p>
-    <div style="overflow-x:auto;">
-        <table class="param-table" id="paramTable">
-            <thead>
-                <tr>
-                    <th style="width:30px;"></th>
-                    <th>Name</th>
-                    <th>Current</th>
-                    <th>Unit</th>
-                    <th style="width:90px;">Low</th>
-                    <th style="width:90px;">High</th>
-                    <th style="width:70px;">Steps</th>
-                </tr>
-            </thead>
-            <tbody id="paramBody"></tbody>
-        </table>
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle">
+        <button class="mode-btn active" id="btnModeRange"    onclick="setMode('range')">Range / Cartesian</button>
+        <button class="mode-btn"        id="btnModeExplicit" onclick="setMode('explicit')">Explicit Values</button>
     </div>
+
+    <!-- Range mode description -->
+    <div class="mode-description" id="modeDescRange">
+        <strong>Range mode:</strong> Set a low, high, and step count per parameter. All combinations are exported (cartesian product). E.g. 2 params × 3 steps = 9 exports.
+    </div>
+    <!-- Explicit mode description -->
+    <div class="mode-description" id="modeDescExplicit" style="display:none;">
+        <strong>Explicit mode:</strong> Enter exact values for each parameter, separated by commas. Rows are matched positionally (zipped) — row 1 of each param is one export. All parameters must have the same number of values.
+    </div>
+
+    <!-- RANGE MODE TABLE -->
+    <div id="rangeSection">
+        <p class="text-dim text-small mt-8" style="margin-bottom:8px;">
+            Only <strong>favorited (★)</strong> parameters are shown.
+        </p>
+        <div style="overflow-x:auto;">
+            <table class="param-table" id="paramTable">
+                <thead>
+                    <tr>
+                        <th style="width:30px;"></th>
+                        <th>Name</th>
+                        <th>Current</th>
+                        <th>Unit</th>
+                        <th style="width:90px;">Low</th>
+                        <th style="width:90px;">High</th>
+                        <th style="width:70px;">Steps</th>
+                    </tr>
+                </thead>
+                <tbody id="paramBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- EXPLICIT MODE -->
+    <div id="explicitSection" style="display:none;">
+        <p class="text-dim text-small mt-8" style="margin-bottom:12px;">
+            Enter comma-separated values for each parameter below, or use the CSV box to paste all at once.
+        </p>
+        <div id="explicitRows"></div>
+
+        <!-- CSV import -->
+        <div class="csv-import-area" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+            <div style="font-size:13px;font-weight:600;margin-bottom:6px;">CSV Quick-Entry</div>
+            <p class="text-dim text-small" style="margin-bottom:8px;">
+                Each row: <code>parameterName, val1, val2, val3, …</code><br>
+                Pre-filled with your favorited parameters and current values — just edit the numbers and click <strong>Apply</strong>.
+            </p>
+            <textarea id="csvInput" style="width:100%;height:100px;padding:8px;background:var(--bg-input);color:var(--fg);border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:monospace;resize:vertical;" placeholder="Loading parameters…"></textarea>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+                <button class="btn-small btn-primary" onclick="applyCsvImport()">Apply CSV</button>
+                <button class="btn-small btn-secondary" onclick="resetCsvToDefaults()">Reset to Current Values</button>
+                <div class="csv-status" id="csvStatus" style="flex:1;font-size:12px;min-height:18px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== PRESETS ====== -->
+<div class="section">
+    <h2>Presets</h2>
+    <p class="text-dim text-small" style="margin-bottom:10px;">Save your current parameter setup as a named preset, or load a previously saved one.</p>
+    <div class="preset-bar">
+        <select id="presetSelect" onchange="previewPresetLoad()">
+            <option value="">— Select a preset —</option>
+        </select>
+        <button class="btn-small btn-secondary" onclick="loadPreset()">Load</button>
+        <button class="btn-small btn-danger"    onclick="deletePreset()">Delete</button>
+    </div>
+    <div class="preset-bar">
+        <input class="preset-name-input" type="text" id="presetName" placeholder="New preset name…" />
+        <button class="btn-small btn-success" onclick="savePreset()">Save Current</button>
+    </div>
+    <div id="presetStatus" class="text-small" style="min-height:18px; color: var(--fg-dim);"></div>
 </div>
 
 <!-- ====== BODIES ====== -->
 <div class="section">
     <h2>Bodies to Export <span class="badge" id="bodyCount">0</span></h2>
     <p class="text-dim text-small" style="margin-bottom:8px;">
-        Select the bodies you want included in each export. If none are selected, the full design is exported (STEP) or all bodies (STL).
+        Select bodies for each export. If none selected, the full design is exported.
     </p>
     <div style="margin-bottom:6px;">
         <button class="btn-small btn-secondary" onclick="selectAllBodies(true)">Select All</button>
@@ -267,7 +437,7 @@
     <div class="settings-grid three">
         <div class="field">
             <label>File Format</label>
-            <select id="exportFormat">
+            <select id="exportFormat" onchange="updatePreview()">
                 <option value="STEP">STEP (.step)</option>
                 <option value="STL">STL (.stl)</option>
             </select>
@@ -275,20 +445,18 @@
         <div class="field" style="grid-column: span 2;">
             <label>Output Folder</label>
             <div class="browse-row">
-                <input type="text" id="outputFolder" placeholder="C:\Exports\..." />
+                <input type="text" id="outputFolder" placeholder="C:\Exports\…" />
                 <button class="btn-secondary" onclick="browseFolder()">Browse…</button>
             </div>
         </div>
     </div>
-    <div class="settings-grid" style="margin-top:12px;">
+    <div class="settings-grid mt-12">
         <div class="field" style="grid-column: span 2;">
             <label>Naming Template <span class="text-dim">(optional – use {ParamName} tokens)</span></label>
             <input type="text" id="namingTemplate"
-                   placeholder="e.g. Widget_{PlateThickness}_{WallHeight}" />
+                   placeholder="e.g. Vial_{vialdiameter}x{viallength}" oninput="updatePreview()" />
         </div>
     </div>
-
-    <!-- Preview -->
     <div class="preview-box" id="previewBox">
         <strong>Preview:</strong> Select parameters above to see file names.
     </div>
@@ -301,16 +469,17 @@
 </div>
 
 <script>
-/* ==================================================================
-   Communication with Fusion 360 via adsk.fusionSendData / palette API
-   ================================================================== */
+/* ============================================================
+   State
+   ============================================================ */
+let PARAMS   = [];
+let BODIES   = [];
+let PRESETS  = {};
+let sweepMode = "range"; // "range" | "explicit"
 
-let PARAMS = [];
-let BODIES = [];
-
-// On load, request data from the add-in
-// The adsk object is injected asynchronously by Fusion's browser control,
-// so we must poll until it becomes available.
+/* ============================================================
+   Init
+   ============================================================ */
 function waitForAdsk(callback, attempts) {
     attempts = attempts || 0;
     if (window.adsk) {
@@ -319,7 +488,7 @@ function waitForAdsk(callback, attempts) {
         setTimeout(() => waitForAdsk(callback, attempts + 1), 100);
     } else {
         document.getElementById("paramBody").innerHTML =
-            '<tr><td colspan="7" style="color:#d44;padding:8px;">Timed out waiting for Fusion bridge (window.adsk). Try re-opening the palette.</td></tr>';
+            '<tr><td colspan="7" style="color:#d44;padding:8px;">Timed out waiting for Fusion bridge.</td></tr>';
     }
 }
 
@@ -329,53 +498,72 @@ window.addEventListener("DOMContentLoaded", () => {
             try {
                 if (!response) {
                     document.getElementById("paramBody").innerHTML =
-                        '<tr><td colspan="7" style="color:#d44;padding:8px;">No data returned from Fusion. The handler may have thrown an error.</td></tr>';
+                        '<tr><td colspan="7" style="color:#d44;padding:8px;">No data from Fusion.</td></tr>';
                     return;
                 }
                 const data = JSON.parse(response);
                 if (data.error) {
                     document.getElementById("paramBody").innerHTML =
-                        '<tr><td colspan="7" style="color:#d44;padding:8px;">' + esc(data.error) + '</td></tr>';
+                        `<tr><td colspan="7" style="color:#d44;padding:8px;">${esc(data.error)}</td></tr>`;
                     return;
                 }
-                PARAMS = data.parameters || [];
-                BODIES = data.bodies || [];
+                PARAMS  = data.parameters || [];
+                BODIES  = data.bodies     || [];
+                PRESETS = data.presets    || {};
 
-                // Apply saved preferences (format + folder)
                 const prefs = data.prefs || {};
-                if (prefs.exportFormat) {
-                    const fmtSel = document.getElementById("exportFormat");
-                    for (let i = 0; i < fmtSel.options.length; i++) {
-                        if (fmtSel.options[i].value === prefs.exportFormat) {
-                            fmtSel.value = prefs.exportFormat;
-                            break;
-                        }
-                    }
-                }
-                if (prefs.outputFolder) {
-                    document.getElementById("outputFolder").value = prefs.outputFolder;
-                }
+                if (prefs.exportFormat) document.getElementById("exportFormat").value = prefs.exportFormat;
+                if (prefs.outputFolder) document.getElementById("outputFolder").value = prefs.outputFolder;
+                if (prefs.sweepMode)    setMode(prefs.sweepMode, true);
 
                 renderParams();
                 renderBodies();
+                renderPresetSelect();
+                populateCsvDefaults();
             } catch (e) {
                 document.getElementById("paramBody").innerHTML =
-                    '<tr><td colspan="7" style="color:#d44;padding:8px;">Parse error: ' + esc(String(e)) + '</td></tr>';
+                    `<tr><td colspan="7" style="color:#d44;padding:8px;">Parse error: ${esc(String(e))}</td></tr>`;
             }
         }).catch(err => {
             document.getElementById("paramBody").innerHTML =
-                '<tr><td colspan="7" style="color:#d44;padding:8px;">fusionSendData failed: ' + esc(String(err)) + '</td></tr>';
+                `<tr><td colspan="7" style="color:#d44;padding:8px;">fusionSendData failed: ${esc(String(err))}</td></tr>`;
         });
     });
 });
 
-/* ---------- Render parameter rows ---------- */
+/* ============================================================
+   Mode toggle
+   ============================================================ */
+function setMode(mode, silent) {
+    sweepMode = mode;
+    document.getElementById("btnModeRange").classList.toggle("active",    mode === "range");
+    document.getElementById("btnModeExplicit").classList.toggle("active", mode === "explicit");
+    document.getElementById("rangeSection").style.display     = mode === "range"    ? "" : "none";
+    document.getElementById("explicitSection").style.display  = mode === "explicit" ? "block" : "none";
+    document.getElementById("modeDescRange").style.display    = mode === "range"    ? "" : "none";
+    document.getElementById("modeDescExplicit").style.display = mode === "explicit" ? "" : "none";
+
+    if (mode === "explicit") {
+        // Only render rows if not already populated (avoids wiping user-entered values)
+        const container = document.getElementById("explicitRows");
+        if (!container || !container.children.length) {
+            renderExplicitRows();
+        }
+        populateCsvDefaults();
+    }
+    updateParamCount();
+    updatePreview();
+}
+
+/* ============================================================
+   Range mode rendering
+   ============================================================ */
 function renderParams() {
     const tbody = document.getElementById("paramBody");
     tbody.innerHTML = "";
     if (!PARAMS.length) {
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td colspan="7" class="text-dim">No parameters found. Star/favorite parameters in Fusion or ensure a parametric design is active.</td>`;
+        tr.innerHTML = `<td colspan="7" class="text-dim">No favorited parameters found.</td>`;
         tbody.appendChild(tr);
         document.getElementById("paramCount").textContent = 0;
         return;
@@ -390,9 +578,9 @@ function renderParams() {
             <td style="font-weight:600;">${favStar}${esc(p.name)}${typeTag}</td>
             <td class="text-dim">${esc(p.expression)}</td>
             <td class="text-dim">${esc(p.unit || "—")}</td>
-            <td><input type="number" id="low_${i}"  step="any" ${p.isFavorite ? '' : 'disabled'}
+            <td><input type="number" id="low_${i}"   step="any" ${p.isFavorite ? '' : 'disabled'}
                  value="${p.value}" onchange="updatePreview()" /></td>
-            <td><input type="number" id="high_${i}" step="any" ${p.isFavorite ? '' : 'disabled'}
+            <td><input type="number" id="high_${i}"  step="any" ${p.isFavorite ? '' : 'disabled'}
                  value="${p.value}" onchange="updatePreview()" /></td>
             <td><input type="number" id="steps_${i}" min="1" step="1"
                  ${p.isFavorite ? '' : 'disabled'} value="1" onchange="updatePreview()" /></td>
@@ -404,28 +592,319 @@ function renderParams() {
 }
 
 function onParamToggle(idx, checked) {
-    document.getElementById(`low_${idx}`).disabled  = !checked;
+    document.getElementById(`low_${idx}`).disabled   = !checked;
     document.getElementById(`high_${idx}`).disabled  = !checked;
     document.getElementById(`steps_${idx}`).disabled = !checked;
     updateParamCount();
     updatePreview();
 }
 
-function updateParamCount() {
-    const n = document.querySelectorAll(".param-check:checked").length;
-    document.getElementById("paramCount").textContent = n;
+/* ============================================================
+   Explicit mode rendering
+   ============================================================ */
+function renderExplicitRows(preloadValues) {
+    // preloadValues: optional object { paramName: "v1,v2,v3" }
+    const container = document.getElementById("explicitRows");
+    container.innerHTML = "";
+
+    if (!PARAMS.length) {
+        container.innerHTML = '<p class="text-dim">No favorited parameters found.</p>';
+        return;
+    }
+
+    PARAMS.forEach((p, i) => {
+        const div = document.createElement("div");
+        div.className = "explicit-param-row";
+
+        const preload = preloadValues && preloadValues[p.name] ? preloadValues[p.name] : "";
+        const isText  = p.isText || false;
+        const unitTag = isText
+            ? `<span class="unit-tag" style="color:#888;">(Text)</span>`
+            : (p.unit ? `<span class="unit-tag">(${esc(p.unit)})</span>` : "");
+        const placeholder = isText
+            ? `e.g. 3ml, 5ml, 10ml, 20ml`
+            : `${p.value}, …`;
+        div.innerHTML = `
+            <div class="explicit-param-label">
+                <input type="checkbox" class="exp-check" data-idx="${i}"
+                       id="exp_check_${i}" ${p.isFavorite ? 'checked' : ''}
+                       onchange="updateExplicitCounts(); updatePreview();" />
+                <label for="exp_check_${i}" style="cursor:pointer;">
+                    ${esc(p.name)} ${unitTag}
+                </label>
+            </div>
+            <input type="text" class="explicit-values-input" id="exp_vals_${i}"
+                   placeholder="${placeholder}"
+                   value="${esc(preload)}"
+                   oninput="updateExplicitCounts(); updatePreview();" />
+            <div class="explicit-count-badge" id="exp_count_${i}">0 values</div>
+        `;
+        container.appendChild(div);
+    });
+
+    updateExplicitCounts();
+    updatePreview();
 }
 
-/* ---------- Render body checkboxes ---------- */
+function updateExplicitCounts() {
+    const lengths = [];
+    PARAMS.forEach((p, i) => {
+        const cb  = document.getElementById(`exp_check_${i}`);
+        const inp = document.getElementById(`exp_vals_${i}`);
+        const badge = document.getElementById(`exp_count_${i}`);
+        if (!cb || !inp || !badge) return;
+
+        if (!cb.checked) {
+            badge.textContent = "—";
+            badge.className = "explicit-count-badge";
+            return;
+        }
+
+        const vals = parseValueList(inp.value);
+        badge.textContent = `${vals.length} value${vals.length !== 1 ? "s" : ""}`;
+        lengths.push(vals.length);
+    });
+
+    // Highlight mismatches
+    const uniqueLengths = [...new Set(lengths)];
+    const mismatch = uniqueLengths.length > 1;
+    PARAMS.forEach((p, i) => {
+        const cb  = document.getElementById(`exp_check_${i}`);
+        const inp = document.getElementById(`exp_vals_${i}`);
+        const badge = document.getElementById(`exp_count_${i}`);
+        if (!cb || !inp || !badge || !cb.checked) return;
+        inp.classList.toggle("error", mismatch);
+        badge.classList.toggle("mismatch", mismatch);
+    });
+}
+
+function parseValueList(str) {
+    // Accept any non-empty token — numeric or text (e.g. "3ml, 5ml")
+    return str.split(",")
+              .map(s => s.trim())
+              .filter(s => s !== "");
+}
+
+/* ============================================================
+   CSV import
+   ============================================================ */
+
+/** Build the default CSV text from current favorite params and their values */
+function buildCsvDefaults() {
+    return PARAMS.map(p => `${p.name}, ${p.value}`).join("\n");
+}
+
+/** Pre-fill the CSV box with favorited params + current values on load */
+function populateCsvDefaults() {
+    if (!PARAMS.length) return;
+    const el = document.getElementById("csvInput");
+    if (el && !el.value.trim()) {
+        el.value = buildCsvDefaults();
+    }
+}
+
+/** Reset CSV box back to param names + current values */
+function resetCsvToDefaults() {
+    const el = document.getElementById("csvInput");
+    if (el) el.value = buildCsvDefaults();
+    const statusEl = document.getElementById("csvStatus");
+    statusEl.textContent = "Reset to current parameter values.";
+    statusEl.className = "csv-status";
+}
+
+/** Parse the CSV box and apply values to explicit rows */
+function applyCsvImport() {
+    const raw = document.getElementById("csvInput").value.trim();
+    const statusEl = document.getElementById("csvStatus");
+
+    if (!raw) { statusEl.textContent = "Nothing to import."; statusEl.className = "csv-status"; return; }
+
+    const lines = raw.split("\n").map(l => l.trim()).filter(l => l);
+    const parsed = {};
+    const errors = [];
+
+    for (const line of lines) {
+        const parts = line.split(",").map(s => s.trim());
+        if (parts.length < 2) { errors.push(`Bad line: "${line}"`); continue; }
+        const name = parts[0];
+        const vals = parts.slice(1);
+        const match = PARAMS.find(p => p.name === name);
+        if (!match) {
+            errors.push(`Unknown parameter: "${name}" — must match a favorited parameter name exactly.`);
+            continue;
+        }
+        parsed[name] = vals.join(", ");
+    }
+
+    if (errors.length) {
+        statusEl.textContent = "⚠ " + errors.join("; ");
+        statusEl.className = "csv-status err";
+        return;
+    }
+
+    // Switch to explicit mode and populate the per-param rows
+    // Switch to explicit mode and populate the per-param rows
+    document.getElementById("explicitRows").innerHTML = "";
+    setMode("explicit", true);
+    renderExplicitRows(parsed);
+
+    statusEl.textContent = `✓ Applied ${Object.keys(parsed).length} parameter(s) — switched to Explicit Values mode.`;
+    statusEl.className = "csv-status ok";
+    updateParamCount();
+    updatePreview();
+}
+
+/* ============================================================
+   Presets
+   ============================================================ */
+function renderPresetSelect() {
+    const sel = document.getElementById("presetSelect");
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Select a preset —</option>';
+    Object.keys(PRESETS).sort().forEach(name => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+    });
+    if (current && PRESETS[current]) sel.value = current;
+}
+
+function previewPresetLoad() {
+    // Could add a tooltip/summary here in future
+}
+
+function loadPreset() {
+    const name = document.getElementById("presetSelect").value;
+    if (!name || !PRESETS[name]) {
+        document.getElementById("presetStatus").textContent = "No preset selected.";
+        return;
+    }
+    const preset = PRESETS[name];
+
+    // Apply mode
+    if (preset.sweepMode) setMode(preset.sweepMode, true);
+
+    if (preset.sweepMode === "explicit" || sweepMode === "explicit") {
+        renderExplicitRows(preset.explicitValues || {});
+        // Re-check only params in preset
+        PARAMS.forEach((p, i) => {
+            const cb = document.getElementById(`exp_check_${i}`);
+            if (cb) cb.checked = !!(preset.explicitValues && preset.explicitValues[p.name]);
+        });
+    } else {
+        // Range mode: restore low/high/steps
+        PARAMS.forEach((p, i) => {
+            const rp = preset.rangeParams && preset.rangeParams.find(rp => rp.name === p.name);
+            const cb = document.getElementById(`param-check-${i}`) ||
+                       document.querySelector(`.param-check[data-idx="${i}"]`);
+            if (rp) {
+                if (cb) { cb.checked = true; onParamToggle(i, true); }
+                const lo = document.getElementById(`low_${i}`);
+                const hi = document.getElementById(`high_${i}`);
+                const st = document.getElementById(`steps_${i}`);
+                if (lo) lo.value = rp.low;
+                if (hi) hi.value = rp.high;
+                if (st) st.value = rp.steps;
+            }
+        });
+    }
+
+    if (preset.namingTemplate !== undefined)
+        document.getElementById("namingTemplate").value = preset.namingTemplate;
+    if (preset.outputFolder)
+        document.getElementById("outputFolder").value = preset.outputFolder;
+    if (preset.format)
+        document.getElementById("exportFormat").value = preset.format;
+
+    document.getElementById("presetName").value = name;
+    document.getElementById("presetStatus").textContent = `✓ Loaded preset "${name}"`;
+    updateParamCount();
+    updatePreview();
+}
+
+function savePreset() {
+    const name = document.getElementById("presetName").value.trim();
+    if (!name) {
+        document.getElementById("presetStatus").textContent = "Enter a preset name first.";
+        return;
+    }
+
+    const preset = buildCurrentPreset();
+    const payload = JSON.stringify({ name, preset });
+
+    window.adsk && adsk.fusionSendData("save_preset", payload).then(response => {
+        try {
+            const data = JSON.parse(response);
+            if (data.ok) {
+                PRESETS = data.presets;
+                renderPresetSelect();
+                document.getElementById("presetSelect").value = name;
+                document.getElementById("presetStatus").textContent = `✓ Saved preset "${name}"`;
+                document.getElementById("presetName").value = "";
+            } else {
+                document.getElementById("presetStatus").textContent = "Error: " + (data.error || "unknown");
+            }
+        } catch(e) {
+            document.getElementById("presetStatus").textContent = "Save failed.";
+        }
+    });
+}
+
+function deletePreset() {
+    const name = document.getElementById("presetSelect").value;
+    if (!name) { document.getElementById("presetStatus").textContent = "No preset selected."; return; }
+    if (!confirm(`Delete preset "${name}"?`)) return;
+
+    window.adsk && adsk.fusionSendData("delete_preset", JSON.stringify({ name })).then(response => {
+        try {
+            const data = JSON.parse(response);
+            PRESETS = data.presets;
+            renderPresetSelect();
+            document.getElementById("presetStatus").textContent = `Deleted "${name}"`;
+        } catch(e) {}
+    });
+}
+
+function buildCurrentPreset() {
+    const preset = {
+        sweepMode,
+        format:          document.getElementById("exportFormat").value,
+        outputFolder:    document.getElementById("outputFolder").value,
+        namingTemplate:  document.getElementById("namingTemplate").value,
+    };
+
+    if (sweepMode === "explicit") {
+        const ev = {};
+        PARAMS.forEach((p, i) => {
+            const cb  = document.getElementById(`exp_check_${i}`);
+            const inp = document.getElementById(`exp_vals_${i}`);
+            if (cb && cb.checked && inp) ev[p.name] = inp.value;
+        });
+        preset.explicitValues = ev;
+    } else {
+        preset.rangeParams = [];
+        document.querySelectorAll(".param-check:checked").forEach(cb => {
+            const i = parseInt(cb.dataset.idx);
+            preset.rangeParams.push({
+                name:  PARAMS[i].name,
+                low:   parseFloat(document.getElementById(`low_${i}`).value)   || 0,
+                high:  parseFloat(document.getElementById(`high_${i}`).value)  || 0,
+                steps: parseInt(document.getElementById(`steps_${i}`).value)   || 1,
+            });
+        });
+    }
+    return preset;
+}
+
+/* ============================================================
+   Body list
+   ============================================================ */
 function renderBodies() {
     const list = document.getElementById("bodyList");
     list.innerHTML = "";
     if (!BODIES.length) {
-        const div = document.createElement("div");
-        div.className = "text-dim";
-        div.style.padding = "4px 6px";
-        div.textContent = "No BRep bodies found in the active design.";
-        list.appendChild(div);
+        list.innerHTML = '<div class="text-dim" style="padding:4px 6px;">No BRep bodies found.</div>';
         document.getElementById("bodyCount").textContent = 0;
         return;
     }
@@ -448,68 +927,132 @@ function selectAllBodies(state) {
 }
 
 function updateBodyCount() {
-    const n = document.querySelectorAll(".body-check:checked").length;
-    document.getElementById("bodyCount").textContent = n;
+    document.getElementById("bodyCount").textContent =
+        document.querySelectorAll(".body-check:checked").length;
 }
 
-/* ---------- Preview ---------- */
+/* ============================================================
+   Preview
+   ============================================================ */
 function updatePreview() {
     const box = document.getElementById("previewBox");
-    const selected = getSelectedParams();
-    if (selected.length === 0) {
-        box.innerHTML = "<strong>Preview:</strong> Select parameters above to see file names.";
-        return;
-    }
-
-    // Compute total combos
-    let total = 1;
-    selected.forEach(s => total *= s.steps);
-
-    // Show first few example names
-    const tpl = document.getElementById("namingTemplate").value;
     const fmt = document.getElementById("exportFormat").value.toLowerCase();
+    const tpl = document.getElementById("namingTemplate").value;
 
-    // Build first combo name as example
-    let exampleParts = [];
-    selected.forEach(s => {
-        exampleParts.push(`${s.name}_${formatNum(s.low)}`);
-    });
-    const exName1 = tpl
-        ? applyTemplate(tpl, selected, selected.map(s => s.low))
-        : exampleParts.join("__");
+    if (sweepMode === "explicit") {
+        // Get checked params with their value lists
+        const selExp = [];
+        PARAMS.forEach((p, i) => {
+            const cb  = document.getElementById(`exp_check_${i}`);
+            const inp = document.getElementById(`exp_vals_${i}`);
+            if (cb && cb.checked && inp) {
+                const vals = parseValueList(inp.value);
+                if (vals.length) selExp.push({ name: p.name, vals });
+            }
+        });
 
-    let exampleParts2 = [];
-    selected.forEach(s => {
-        exampleParts2.push(`${s.name}_${formatNum(s.high)}`);
-    });
-    const exName2 = tpl
-        ? applyTemplate(tpl, selected, selected.map(s => s.high))
-        : exampleParts2.join("__");
+        if (!selExp.length) {
+            box.innerHTML = "<strong>Preview:</strong> Add values above to see file names.";
+            return;
+        }
 
-    box.innerHTML = `
-        <strong>Total combinations:</strong> ${total}<br>
-        <strong>Example files:</strong><br>
-        &nbsp;&nbsp;${esc(exName1)}.${fmt}<br>
-        &nbsp;&nbsp;…<br>
-        &nbsp;&nbsp;${esc(exName2)}.${fmt}
-    `;
+        const lengths = selExp.map(s => s.vals.length);
+        const total = lengths[0] || 0;
+        const mismatch = new Set(lengths).size > 1;
+
+        if (mismatch) {
+            box.innerHTML = `<strong style="color:var(--danger)">⚠ Value count mismatch — all parameters must have the same number of values.</strong>`;
+            return;
+        }
+
+        const example1 = buildExplicitName(selExp, 0, tpl);
+        const exampleN = total > 1 ? buildExplicitName(selExp, total - 1, tpl) : null;
+
+        box.innerHTML = `
+            <strong>Total exports:</strong> ${total}<br>
+            <strong>Example files:</strong><br>
+            &nbsp;&nbsp;${esc(example1)}.${fmt}<br>
+            ${exampleN ? `&nbsp;&nbsp;…<br>&nbsp;&nbsp;${esc(exampleN)}.${fmt}` : ""}
+        `;
+
+    } else {
+        // Range mode
+        const selected = getRangeSelectedParams();
+        if (!selected.length) {
+            box.innerHTML = "<strong>Preview:</strong> Select parameters above to see file names.";
+            return;
+        }
+        let total = 1;
+        selected.forEach(s => total *= s.steps);
+
+        const example1 = buildRangeName(selected, selected.map(s => s.low), tpl);
+        const exampleN = buildRangeName(selected, selected.map(s => s.high), tpl);
+
+        box.innerHTML = `
+            <strong>Total combinations:</strong> ${total}<br>
+            <strong>Example files:</strong><br>
+            &nbsp;&nbsp;${esc(example1)}.${fmt}<br>
+            &nbsp;&nbsp;…<br>
+            &nbsp;&nbsp;${esc(exampleN)}.${fmt}
+        `;
+    }
 }
 
-document.getElementById("namingTemplate").addEventListener("input", updatePreview);
-document.getElementById("exportFormat").addEventListener("change", updatePreview);
+function buildExplicitName(selExp, rowIdx, tpl) {
+    if (tpl) {
+        let s = tpl;
+        selExp.forEach(p => {
+            s = s.replaceAll(`{${p.name}}`, p.vals[rowIdx] || "");
+        });
+        return s;
+    }
+    return selExp.map(p => `${p.name}_${p.vals[rowIdx] || ""}`).join("__");
+}
 
-/* ---------- Helpers ---------- */
-function getSelectedParams() {
+function buildRangeName(params, values, tpl) {
+    if (tpl) {
+        let s = tpl;
+        params.forEach((p, i) => s = s.replaceAll(`{${p.name}}`, formatNum(values[i])));
+        return s;
+    }
+    return params.map((p, i) => `${p.name}_${formatNum(values[i])}`).join("__");
+}
+
+/* ============================================================
+   Get selected params for submit
+   ============================================================ */
+function getRangeSelectedParams() {
     const result = [];
     document.querySelectorAll(".param-check:checked").forEach(cb => {
         const i = parseInt(cb.dataset.idx);
         result.push({
             name:  PARAMS[i].name,
             unit:  PARAMS[i].unit || "",
-            low:   parseFloat(document.getElementById(`low_${i}`).value) || 0,
-            high:  parseFloat(document.getElementById(`high_${i}`).value) || 0,
-            steps: parseInt(document.getElementById(`steps_${i}`).value) || 1,
+            low:   parseFloat(document.getElementById(`low_${i}`).value)   || 0,
+            high:  parseFloat(document.getElementById(`high_${i}`).value)  || 0,
+            steps: parseInt(document.getElementById(`steps_${i}`).value)   || 1,
         });
+    });
+    return result;
+}
+
+function getExplicitSelectedParams() {
+    const result = [];
+    PARAMS.forEach((p, i) => {
+        const cb  = document.getElementById(`exp_check_${i}`);
+        const inp = document.getElementById(`exp_vals_${i}`);
+        if (cb && cb.checked && inp) {
+            const isText = p.isText || false;
+            // For text params keep values as raw strings; for numeric, keep as strings too
+            // (sweep_logic.py handles the conversion based on isText flag)
+            const rawVals = inp.value.split(",").map(s => s.trim()).filter(s => s !== "");
+            result.push({
+                name:   p.name,
+                unit:   p.unit || "",
+                isText: isText,
+                values: rawVals,
+            });
+        }
     });
     return result;
 }
@@ -517,65 +1060,74 @@ function getSelectedParams() {
 function getSelectedBodies() {
     const result = [];
     document.querySelectorAll(".body-check:checked").forEach(cb => {
-        const i = parseInt(cb.dataset.idx);
-        result.push(BODIES[i].path);
+        result.push(BODIES[parseInt(cb.dataset.idx)].path);
     });
     return result;
 }
 
-function formatNum(v) {
-    return parseFloat(v.toFixed(6)).toString();
+function updateParamCount() {
+    let n = 0;
+    if (sweepMode === "explicit") {
+        n = document.querySelectorAll(".exp-check:checked").length;
+    } else {
+        n = document.querySelectorAll(".param-check:checked").length;
+    }
+    document.getElementById("paramCount").textContent = n;
 }
 
-function applyTemplate(tpl, params, values) {
-    let s = tpl;
-    params.forEach((p, i) => {
-        s = s.replaceAll(`{${p.name}}`, formatNum(values[i]));
-    });
-    return s;
+/* ============================================================
+   Helpers
+   ============================================================ */
+function formatNum(v) {
+    return parseFloat(parseFloat(v).toFixed(6)).toString();
 }
 
 function esc(s) {
     const d = document.createElement("div");
-    d.textContent = s;
+    d.textContent = String(s);
     return d.innerHTML;
 }
 
-/* ---------- Browse folder ---------- */
 function browseFolder() {
-    const input = document.getElementById("outputFolder");
-    // Request Fusion to open native folder dialog
-    if (window.adsk) {
-        adsk.fusionSendData("browse", "{}").then(response => {
-            try {
-                const data = JSON.parse(response);
-                if (data.folder) {
-                    input.value = data.folder;
-                }
-            } catch (e) {
-                console.error("Browse failed", e);
-            }
-        });
-    }
+    window.adsk && adsk.fusionSendData("browse", "{}").then(response => {
+        try {
+            const data = JSON.parse(response);
+            if (data.folder) document.getElementById("outputFolder").value = data.folder;
+        } catch(e) {}
+    });
 }
 
-/* ---------- Submit / Cancel ---------- */
+/* ============================================================
+   Submit / Cancel
+   ============================================================ */
 function doExport() {
-    const params  = getSelectedParams();
-    const bodies  = getSelectedBodies();
-    const folder  = document.getElementById("outputFolder").value.trim();
-    const fmt     = document.getElementById("exportFormat").value;
-    const tpl     = document.getElementById("namingTemplate").value.trim();
+    let params;
+    if (sweepMode === "explicit") {
+        params = getExplicitSelectedParams();
+        if (!params.length) { alert("Select at least one parameter with values."); return; }
+        // Validate equal lengths
+        const lengths = params.map(p => p.values.length);
+        if (new Set(lengths).size > 1) {
+            alert("All parameters must have the same number of values.\n\n" +
+                  params.map(p => `${p.name}: ${p.values.length} values`).join("\n"));
+            return;
+        }
+        if (lengths[0] === 0) { alert("Enter values for each selected parameter."); return; }
+    } else {
+        params = getRangeSelectedParams();
+        if (!params.length) { alert("Select at least one parameter."); return; }
+    }
 
-    if (!params.length) { alert("Select at least one parameter."); return; }
-    if (!folder)        { alert("Enter an output folder path.");    return; }
+    const folder = document.getElementById("outputFolder").value.trim();
+    if (!folder) { alert("Enter an output folder path."); return; }
 
     const payload = JSON.stringify({
-        params:          params,
-        bodies:          bodies,
-        outputFolder:    folder,
-        format:          fmt,
-        namingTemplate:  tpl,
+        sweepMode,
+        params,
+        bodies:         getSelectedBodies(),
+        outputFolder:   folder,
+        format:         document.getElementById("exportFormat").value,
+        namingTemplate: document.getElementById("namingTemplate").value.trim(),
     });
 
     window.adsk && adsk.fusionSendData("submit", payload);
