@@ -3,7 +3,8 @@
 # This module is imported by the add-in entry point.  It owns:
 #   • Building the native Fusion command inputs (parameter table, range
 #     entries, body/component selection, export format, output folder).
-#   • Computing the full combinatorial sweep.
+#   • Computing the full combinatorial sweep (range mode) OR
+#     a zipped explicit-values sweep (explicit mode).
 #   • Driving the timeline, updating parameters, and exporting files.
 
 from __future__ import annotations
@@ -49,6 +50,31 @@ def _save_prefs(prefs: dict):
 
 
 # ---------------------------------------------------------------------------
+# Preset persistence
+# ---------------------------------------------------------------------------
+
+_PRESETS_PATH = os.path.join(os.path.dirname(__file__), "presets.json")
+
+
+def _load_presets() -> dict:
+    """Load saved presets from disk. Returns {} on any failure."""
+    try:
+        with open(_PRESETS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _save_presets(presets: dict):
+    """Write presets to disk (best-effort, never raises)."""
+    try:
+        with open(_PRESETS_PATH, "w", encoding="utf-8") as f:
+            json.dump(presets, f, indent=2)
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -73,11 +99,7 @@ def _format_value(val: float) -> str:
 
 
 def _collect_all_parameters(design: adsk.fusion.Design):
-    """Return a list of dicts for favorited parameters in the active design.
-
-    Values are converted from internal units (cm/rad) to the parameter's
-    display unit so the UI shows the correct numbers.
-    """
+    """Return a list of dicts for favorited parameters in the active design."""
     params = []
     try:
         plist = design.allParameters
@@ -94,7 +116,6 @@ def _collect_all_parameters(design: adsk.fusion.Design):
         except Exception:
             continue
 
-        # Only include favorited parameters
         try:
             is_fav = p.isFavorite
         except Exception:
@@ -115,7 +136,6 @@ def _collect_all_parameters(design: adsk.fusion.Design):
         except Exception:
             unit = ""
 
-        # Convert internal value to display units
         try:
             if unit:
                 display_value = um.convert(raw_value, um.internalUnits, unit)
@@ -129,6 +149,22 @@ def _collect_all_parameters(design: adsk.fusion.Design):
         except Exception:
             is_user = False
 
+        # Detect text parameters — they have no unit and their value is a string
+        try:
+            is_text = isinstance(p.value, str) or (unit == "" and isinstance(expression, str) and
+                      not any(c.isdigit() for c in expression.replace('"','').replace("'","")))
+        except Exception:
+            is_text = False
+        # More reliable: text params in Fusion have unitType == ""  and value is str
+        try:
+            is_text = isinstance(p.value, str)
+        except Exception:
+            pass
+
+        # For text params, use the expression (stripped of quotes) as display value
+        if is_text:
+            display_value = expression.strip('"').strip("'")
+
         params.append({
             "name": name,
             "expression": expression,
@@ -136,13 +172,14 @@ def _collect_all_parameters(design: adsk.fusion.Design):
             "unit": unit,
             "isFavorite": is_fav,
             "isUserParam": is_user,
+            "isText": is_text,
         })
     return params
 
 
 def _collect_all_bodies(design: adsk.fusion.Design):
     """Walk the component tree and return [(body, component, path)] for every
-    BRepBody in the design.  Uses indexed access for reliability."""
+    BRepBody in the design."""
     results = []
 
     def _walk(occ_path: str, comp: adsk.fusion.Component):
@@ -168,25 +205,20 @@ def _collect_all_bodies(design: adsk.fusion.Design):
 
 
 # ---------------------------------------------------------------------------
-# Palette / HTML-based command (simpler & more flexible than table inputs)
+# Palette / HTML-based command
 # ---------------------------------------------------------------------------
-# We use a *Command* with a custom HTML palette so the user gets a nice
-# scrollable list of parameters + bodies to select.
 
 PALETTE_ID = "paramSweepPalette"
 PALETTE_TITLE = "Parameter Sweep Exporter"
-PALETTE_URL = ""  # set at runtime to point to the local HTML file
-PALETTE_WIDTH = 720
-PALETTE_HEIGHT = 700
+PALETTE_URL = ""
+PALETTE_WIDTH = 780
+PALETTE_HEIGHT = 760
 
 _palette: adsk.core.Palette = None
-_cached_config: dict = None  # filled by the palette before OK
+_cached_config: dict = None
 
 
 class _PaletteHTMLHandler(adsk.core.HTMLEventHandler):
-    """Handles messages sent from the palette HTML page via
-    ``adsk.fusionSendData(action, data)``."""
-
     def __init__(self):
         super().__init__()
 
@@ -209,10 +241,10 @@ class _PaletteHTMLHandler(adsk.core.HTMLEventHandler):
                     })
                     return
 
-                # Page loaded – send parameter + body info to the page.
                 params = _collect_all_parameters(design)
                 bodies = _collect_all_bodies(design)
                 prefs = _load_prefs()
+                presets = _load_presets()
 
                 payload = json.dumps({
                     "parameters": params,
@@ -221,11 +253,11 @@ class _PaletteHTMLHandler(adsk.core.HTMLEventHandler):
                         for body, comp, path in bodies
                     ],
                     "prefs": prefs,
+                    "presets": presets,
                 })
                 args.returnData = payload
 
             elif action == "browse":
-                # Open native folder dialog
                 folder_dlg = ui.createFolderDialog()
                 folder_dlg.title = "Select Output Folder"
                 result = folder_dlg.showDialog()
@@ -234,20 +266,40 @@ class _PaletteHTMLHandler(adsk.core.HTMLEventHandler):
                 else:
                     args.returnData = json.dumps({"folder": ""})
 
+            elif action == "save_preset":
+                # data = { "name": "...", "preset": { sweepMode, params, ... } }
+                payload = json.loads(data)
+                preset_name = payload.get("name", "").strip()
+                preset_data = payload.get("preset", {})
+                if preset_name:
+                    presets = _load_presets()
+                    presets[preset_name] = preset_data
+                    _save_presets(presets)
+                    args.returnData = json.dumps({"ok": True, "presets": presets})
+                else:
+                    args.returnData = json.dumps({"ok": False, "error": "Empty name"})
+
+            elif action == "delete_preset":
+                payload = json.loads(data)
+                preset_name = payload.get("name", "")
+                presets = _load_presets()
+                if preset_name in presets:
+                    del presets[preset_name]
+                    _save_presets(presets)
+                args.returnData = json.dumps({"ok": True, "presets": presets})
+
             elif action == "submit":
-                # User clicked Export – stash configuration and close palette.
                 _cached_config = json.loads(data)
 
-                # Persist user preferences (format + folder)
                 _save_prefs({
                     "exportFormat": _cached_config.get("format", "STEP"),
                     "outputFolder": _cached_config.get("outputFolder", ""),
+                    "sweepMode":    _cached_config.get("sweepMode", "range"),
                 })
 
                 palette = ui.palettes.itemById(PALETTE_ID)
                 if palette:
                     palette.isVisible = False
-                # Trigger the actual export
                 _run_export(ui, design, _cached_config)
 
             elif action == "cancel":
@@ -267,15 +319,14 @@ class _PaletteCloseHandler(adsk.core.UserInterfaceGeneralEventHandler):
         super().__init__()
 
     def notify(self, args):
-        pass  # nothing to clean up
+        pass
 
 
 # ---------------------------------------------------------------------------
-# Public entry point – called from CommandCreated in the main script
+# Public entry point
 # ---------------------------------------------------------------------------
 
 def on_command_created(args: adsk.core.CommandCreatedEventArgs, handlers: list):
-    """Build and display the palette-based UI."""
     app = adsk.core.Application.get()
     ui = app.userInterface
     design = adsk.fusion.Design.cast(app.activeProduct)
@@ -284,12 +335,10 @@ def on_command_created(args: adsk.core.CommandCreatedEventArgs, handlers: list):
         ui.messageBox("No active Fusion design. Please open a design first.")
         return
 
-    # Resolve path to our HTML file (add cache-bust so Fusion reloads changes)
     html_path = os.path.join(os.path.dirname(__file__), "palette.html")
     import time
     html_url = f"file:///{html_path.replace(os.sep, '/')}?v={int(time.time())}"
 
-    # Delete old palette if it exists
     old = ui.palettes.itemById(PALETTE_ID)
     if old:
         old.deleteMe()
@@ -298,16 +347,15 @@ def on_command_created(args: adsk.core.CommandCreatedEventArgs, handlers: list):
         PALETTE_ID,
         PALETTE_TITLE,
         html_url,
-        True,   # isVisible
-        True,   # showCloseButton
-        True,   # isResizable
+        True,
+        True,
+        True,
         PALETTE_WIDTH,
         PALETTE_HEIGHT,
-        True,   # useNewWebBrowser
+        True,
     )
     palette.dockingState = adsk.core.PaletteDockingStates.PaletteDockStateRight
 
-    # Wire up event handlers
     html_handler = _PaletteHTMLHandler()
     palette.incomingFromHTML.add(html_handler)
     handlers.append(html_handler)
@@ -316,14 +364,11 @@ def on_command_created(args: adsk.core.CommandCreatedEventArgs, handlers: list):
     palette.closed.add(close_handler)
     handlers.append(close_handler)
 
-    # We don't actually need the Command to have its own dialog – cancel it
-    # so Fusion doesn't show an empty command dialog.
     args.command.isOKButtonVisible = False
     cancel_handler = _CommandDestroyHandler()
     args.command.destroy.add(cancel_handler)
     handlers.append(cancel_handler)
 
-    # Auto-execute immediately so the command dialog doesn't hang around
     args.command.isAutoExecute = True
 
 
@@ -341,13 +386,19 @@ class _CommandDestroyHandler(adsk.core.CommandEventHandler):
 
 def _run_export(ui: adsk.core.UserInterface, design: adsk.fusion.Design,
                 config: dict):
-    """Execute the full combinatorial sweep + export."""
+    """Execute the sweep + export.
+
+    Supports two sweep modes:
+      "range"    – existing behaviour: cartesian product of evenly-spaced ranges.
+      "explicit" – new behaviour: zip of explicit value lists (matched columns).
+    """
     try:
         output_folder: str = config.get("outputFolder", "")
         export_format: str = config.get("format", "STEP").upper()
         selected_params: list = config.get("params", [])
         selected_body_paths: list = config.get("bodies", [])
         naming_template: str = config.get("namingTemplate", "")
+        sweep_mode: str = config.get("sweepMode", "range")  # "range" | "explicit"
 
         if not output_folder:
             ui.messageBox("No output folder selected. Aborting.")
@@ -362,21 +413,70 @@ def _run_export(ui: adsk.core.UserInterface, design: adsk.fusion.Design,
             ui.messageBox("No parameters selected. Aborting.")
             return
 
-        # Build the axis values for each parameter
-        axes: List[Tuple[str, List[float], str]] = []
-        for sp in selected_params:
-            name = sp["name"]
-            low = float(sp["low"])
-            high = float(sp["high"])
-            steps = int(sp["steps"])
-            unit = sp.get("unit", "")
-            vals = _float_range(low, high, steps)
-            axes.append((name, vals, unit))
+        # ------------------------------------------------------------------
+        # Build combo list depending on mode
+        # axes entries: (name, [values_as_strings], unit, is_text)
+        # ------------------------------------------------------------------
+        if sweep_mode == "explicit":
+            axes_explicit: List[Tuple[str, List[str], str, bool]] = []
+            for sp in selected_params:
+                name     = sp["name"]
+                unit     = sp.get("unit", "")
+                is_text  = sp.get("isText", False) or (unit == "" and sp.get("unit") is None)
+                raw_vals = sp.get("values", []) or []
 
-        # Cartesian product of all axes
-        all_combos = list(itertools.product(*[vals for _, vals, _ in axes]))
+                # Determine if this is a text param: unit is empty and values
+                # contain non-numeric entries
+                str_vals = [str(v).strip() for v in raw_vals if v is not None and str(v).strip() != ""]
+                if not is_text:
+                    # Auto-detect: if any value can't be parsed as float, treat as text
+                    for v in str_vals:
+                        try:
+                            float(v)
+                        except ValueError:
+                            is_text = True
+                            break
+
+                axes_explicit.append((name, str_vals, unit, is_text))
+
+            # Validate equal lengths
+            lengths = [len(vals) for _, vals, _, _ in axes_explicit]
+            if len(set(lengths)) > 1:
+                ui.messageBox(
+                    "Explicit mode error: all parameters must have the same "
+                    f"number of values.\nFound lengths: "
+                    + ", ".join(f"{n}={l}" for (n, _, _, _), l in zip(axes_explicit, lengths))
+                )
+                return
+            if not lengths or lengths[0] == 0:
+                ui.messageBox("No values to export.")
+                return
+
+            # zip produces matched tuples of string values
+            all_combos = list(zip(*[vals for _, vals, _, _ in axes_explicit]))
+            axes = axes_explicit
+
+        else:
+            # Original range / cartesian-product mode — all numeric
+            axes: List[Tuple[str, List[str], str, bool]] = []
+            for sp in selected_params:
+                name = sp["name"]
+                unit = sp.get("unit", "")
+                try:
+                    low   = float(sp["low"])
+                    high  = float(sp["high"])
+                    steps = int(sp["steps"])
+                except (TypeError, ValueError):
+                    ui.messageBox(
+                        f"Parameter '{name}' has non-numeric low/high values.\n\n"
+                        "Only numeric parameters can be used in Range mode. "
+                        "Switch to Explicit Values mode for text parameters."
+                    )
+                    return
+                vals = [str(v) for v in _float_range(low, high, steps)]
+                axes.append((name, vals, unit, False))
+
         total = len(all_combos)
-
         if total == 0:
             ui.messageBox("No combinations to export.")
             return
@@ -389,7 +489,7 @@ def _run_export(ui: adsk.core.UserInterface, design: adsk.fusion.Design,
         if confirm != adsk.core.DialogResults.DialogYes:
             return
 
-        # Resolve body references (match by path string)
+        # Resolve body references
         all_bodies = _collect_all_bodies(design)
         export_bodies = []
         if selected_body_paths:
@@ -398,20 +498,18 @@ def _run_export(ui: adsk.core.UserInterface, design: adsk.fusion.Design,
                 if path in path_set:
                     export_bodies.append((body, comp, path))
         else:
-            export_bodies = all_bodies  # export everything
+            export_bodies = all_bodies
 
         if not export_bodies:
             ui.messageBox("No matching bodies found. Aborting.")
             return
 
-        # Grab all parameters by name for quick access
         all_params: Dict[str, adsk.fusion.Parameter] = {}
         for p in design.allParameters:
             all_params[p.name] = p
 
-        # Store original values so we can restore them at the end
         original_expressions: Dict[str, str] = {}
-        for name, _, _ in axes:
+        for name, _, _, _ in axes:
             if name in all_params:
                 original_expressions[name] = all_params[name].expression
 
@@ -425,35 +523,38 @@ def _run_export(ui: adsk.core.UserInterface, design: adsk.fusion.Design,
             if progress.wasCancelled:
                 break
 
-            # --- update parameters ---
-            for (param_name, _, unit), value in zip(axes, combo):
+            # Update parameters
+            for (param_name, _, unit, is_text), value in zip(axes, combo):
                 p = all_params.get(param_name)
                 if p:
-                    # Build expression with unit, e.g. "1.5 mm"
-                    expr = f"{_format_value(value)} {unit}" if unit else _format_value(value)
-                    p.expression = expr
+                    if is_text:
+                        # Text parameters: Fusion takes the raw string value directly
+                        p.expression = str(value)
+                    else:
+                        # Numeric parameters: value + unit
+                        expr = f"{_format_value(float(value))} {unit}" if unit else _format_value(float(value))
+                        p.expression = expr
 
-            # Force a recompute so geometry updates
             adsk.doEvents()
-            design.rootComponent.isSketchFolderLightBulbOn = True  # prod recompute
+            design.rootComponent.isSketchFolderLightBulbOn = True
             adsk.doEvents()
 
-            # --- build file name ---
+            # Build file name
             parts = []
-            for (param_name, _, _), value in zip(axes, combo):
-                parts.append(f"{param_name}_{_format_value(value)}")
+            for (param_name, _, _, is_text), value in zip(axes, combo):
+                if is_text:
+                    parts.append(f"{param_name}_{_sanitize(str(value))}")
+                else:
+                    parts.append(f"{param_name}_{_format_value(float(value))}")
             base_name = _sanitize("__".join(parts))
 
             if naming_template:
-                # Allow a user template like "{PlateThickness}_{WallHeight}"
                 tpl_name = naming_template
-                for (param_name, _, _), value in zip(axes, combo):
-                    tpl_name = tpl_name.replace(
-                        f"{{{param_name}}}", _format_value(value)
-                    )
+                for (param_name, _, _, is_text), value in zip(axes, combo):
+                    display = _sanitize(str(value)) if is_text else _format_value(float(value))
+                    tpl_name = tpl_name.replace(f"{{{param_name}}}", display)
                 base_name = _sanitize(tpl_name)
 
-            # --- export ---
             try:
                 if export_format == "STL":
                     _export_stl(export_mgr, export_bodies, output_folder,
@@ -469,14 +570,13 @@ def _run_export(ui: adsk.core.UserInterface, design: adsk.fusion.Design,
 
         progress.hide()
 
-        # --- restore original parameter values ---
+        # Restore original parameter values
         for name, expr in original_expressions.items():
             p = all_params.get(name)
             if p:
                 p.expression = expr
         adsk.doEvents()
 
-        # Summary
         if errors:
             ui.messageBox(
                 f"Export complete with {len(errors)} error(s):\n\n"
@@ -492,14 +592,12 @@ def _run_export(ui: adsk.core.UserInterface, design: adsk.fusion.Design,
 
 
 def _export_step(export_mgr, output_folder, base_name, design):
-    """Export the entire design (or active bodies) as a STEP file."""
     filepath = os.path.join(output_folder, f"{base_name}.step")
     options = export_mgr.createSTEPExportOptions(filepath)
     export_mgr.execute(options)
 
 
 def _export_stl(export_mgr, bodies, output_folder, base_name, design):
-    """Export each selected body as an STL (combined into one if multiple)."""
     if len(bodies) == 1:
         body, comp, path = bodies[0]
         filepath = os.path.join(output_folder, f"{base_name}.stl")
@@ -507,7 +605,6 @@ def _export_stl(export_mgr, bodies, output_folder, base_name, design):
         options.meshRefinement = adsk.fusion.MeshRefinementSettings.MeshRefinementMedium
         export_mgr.execute(options)
     else:
-        # Export each body individually with its name appended
         for body, comp, path in bodies:
             body_label = _sanitize(body.name)
             filepath = os.path.join(
